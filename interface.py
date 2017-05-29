@@ -1,5 +1,6 @@
 import requests
 import termcolor
+import sys
 
 color_map ={
    "Metro Green Line (803)": "green",
@@ -54,7 +55,7 @@ class MenuState(object):
 
     def run(self):
         # Run the current state function
-        self.switch_dict[self.state]()
+        return self.switch_dict[self.state]()
 
     def route(self):
         """ Print the current set of routes in a pretty format """
@@ -74,10 +75,21 @@ class MenuState(object):
             c_output = termcolor.colored(output, route_color)
 
             print "\t" + str(choice) + ". " +  c_output
+    
+        return True
 
     def stop(self):
         """Print the current set of stops in a pretty format """
-        seq = get_sequence(self.data)
+        try:
+            seq = get_sequence(self.data)
+        except ValueError as e:
+            # Almost certainly a value error here means bogus input
+            # Just kick it back to previous menu
+            print "Unknown route!"
+            self.state = 'route'
+            return False
+
+
         for stop in seq["items"]:
             choice = stop["id"]
             output = stop["display_name"]
@@ -85,9 +97,16 @@ class MenuState(object):
 
             print "\t" + str(choice) + ". " +  c_output
 
+        return True
+
     def pred(self):
         """Print the current predictions for a stop"""
-        predict = get_predictions(self.data)
+        try:
+            predict = get_predictions(self.data)
+        except ValueError as e:
+            print "Unknown stop!"
+            self.state = "stop"
+            return False
         # A dictionary keyed by line, then direction
         run_dict = {}
         for pre in predict["items"]:
@@ -117,7 +136,7 @@ class MenuState(object):
                 for time in run_dict[line][direction]:
                     print "\t\t%s"%(time)
 
-
+        return True
 
     def update(self, user):
         """Update the state, based on user info """
@@ -133,6 +152,9 @@ class MenuState(object):
             # They chose a stop, dump the predictions 
             self.data = user
             self.state = "pred"
+        elif self.state == "pred":
+            # Now they've seen the predictions  
+            self.state = "route"
         else:
             raise RuntimeError("Unknow state transition: %s"%(self.state))
 
@@ -145,13 +167,18 @@ def run_menu():
 
     while not_quit:
         # Do whatever our current state calls for
-        menu_obj.run()
+        if not menu_obj.run():
+            continue
+
 
         user = raw_input()
         if user == "q" or user == "quit" or user == "exit":
             break 
 
-        if user == "":
+        if user == "" and menu_obj.state == "pred":
+            menu_obj.update(user)
+            continue
+        elif user == "":
             continue
 
         # Update state based on user input
