@@ -18,9 +18,25 @@ line_map = {
    806: "Metro Expo Line (806)",
    805: "Metro Purple Line (805)",
    804: "Metro Gold Line (804)",
-
-
 }
+
+# Couldn't find ground truth for these, so hard coded
+# based on matching Nextbus
+run_id_map = {
+    801: { 0: "Los Angeles",
+           1: "Long Beach",},
+    802: { 0: "Union Station",
+           1: "North Hollywood",},
+    803: { 0: "Norwalk",
+           1: "Redondo Beach",},
+    804: { 0: "APU/Citrus",
+           1: "Atlantic",},
+    805: { 0: "Union Station",
+           1: "Wilshire and Western",},
+    806: { 0: "Los Angeles",
+           1: "Santa Monica",},
+}
+
 ############# Rest API functions ###############
 
 def get_routes():
@@ -130,7 +146,9 @@ class MenuState(object):
 
             # Spin over the directions
             for direction in run_dict[line]:
-                print "\t%s"%(direction)
+                #print "\t%s"%(direction)
+                dir_lookup = run_id_map[int(line)][int(direction)]
+                print "\t%s"%(dir_lookup)
 
                 # Spin over the times...
                 for time in run_dict[line][direction]:
