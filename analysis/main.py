@@ -23,7 +23,7 @@ def fetch():
 
     response.raise_for_status()
     
-    with open("data/gtfs_rail.zip", 'w') as zip_out:
+    with open("data/gtfs_rail.zip", 'wb') as zip_out:
         for block in response.iter_content(1024):
             zip_out.write(block)         
 
@@ -96,17 +96,43 @@ def build_stop_adj():
             if stop["stop_id"] not in stop_adj[prev_id]:
                 stop_adj[prev_id][stop["stop_id"]] = []
 
-            stop_adj[prev_id][stop["stop_id"]].append(weight)
+            stop_adj[prev_id][stop["stop_id"]].append(weight/60.0)
 
     return stop_adj 
 
-def plot_whiskers(stop_list):
+def station_loc():
+    """ Build a dictionary of station location"""
+    loc_dict = {}
+    
+    with open("data/stops.txt") as stops:
+        reader = csv.DictReader(stops)
+        for line in reader:
+            stop_id = line["stop_id"]
+            lat = float(line["stop_lat"])
+            lon = float(line["stop_lon"])
+            
+            loc_dict[stop_id] = (lat, lon)
+    return loc_dict
+
+def plot_whiskers(stop_list, names):
     """Plot with whiskers"""
 
-    x_list = xrange(stop_list)
+    x_list = range(len(stop_list))
+
+    # Compute the values...
     y_list = [np.median(x) for x in stop_list]
+    y_min = [np.min(x) for x in stop_list]
+    y_max = [np.max(x) for x in stop_list]
 
     plt.plot(x_list, y_list)
+
+    plt.xticks(x_list, names, rotation=75)
+
+    plt.ylabel("Time from Previous (Minutes)")
+    plt.xlabel("Destination")    
+
+
+    plt.savefig("interstation_time.png", bbox_inches="tight")
 
     plt.show()
 
@@ -114,28 +140,46 @@ def main():
     # Get the full matrix
     adj_mat = build_stop_adj()
 
+    # Get the stop locations
+    stop_loc = station_loc()
+
     # Get the stuff for the expo line
     expo_stops = ["80122", "80121", "80123", "80124", "80125", "80126", "80127",
                   "80128", "80129", "80130", "80131", "80132", "80133", "80134",
                   "80135", "80136", "80137", "80138", "80139"]
 
     inter_time = []
+    inter_speed = []
+    inter_distance = []
 
     for index, stop in enumerate(expo_stops):
         if index == 0:
             continue
-
+        
+        # Figure out the time between
         time_list = adj_mat[expo_stops[index - 1]][stop]
-
         inter_time.append(time_list)
+
+        # Figure out straightline distance, compute speed
+        start_station = expo_stops[index-1]
+        loc_a = stop_loc[start_station]
+        loc_b = stop_loc[stop]
+
+        # Wildly inaccurate eucidian distance
+        distance = np.sqrt((loc_a[0] - loc_b[0])**2 + (loc_a[1] - loc_b[1])**2)
+
+        inter_distance.append(distance)
+   
+        inter_speed.append(distance/np.median(time_list))
 
     # Plot 'em
     for index, list_entry in enumerate(inter_time):
-        print expo_stops[index+1], np.min(list_entry), np.max(list_entry)
+        print(expo_stops[index+1], np.min(list_entry), np.max(list_entry))
 
     min_total = sum((np.min(x) for x in inter_time))
     max_total = sum((np.max(x) for x in inter_time))
 
-    print min_total/60.0, max_total/60.0
+    print(min_total, max_total)
 
-    plot_whiskers(inter_time)
+    plot_whiskers(inter_time, expo_stops)
+    
