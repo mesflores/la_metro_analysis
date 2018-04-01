@@ -114,7 +114,7 @@ def station_loc():
             loc_dict[stop_id] = (lat, lon)
     return loc_dict
 
-def plot_whiskers(stop_list, names):
+def plot_times(stop_list, names):
     """Plot with whiskers"""
 
     x_list = range(len(stop_list))
@@ -181,5 +181,5 @@ def main():
 
     print(min_total, max_total)
 
-    plot_whiskers(inter_time, expo_stops)
+    plot_times(inter_time, expo_stops)
     
