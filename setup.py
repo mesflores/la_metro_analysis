@@ -8,6 +8,7 @@ setup(name='analysis',
       packages=['analysis'],
       install_requires=[
         "matplotlib",
+        "numpy",
         "requests",
       ],
       entry_points = {
